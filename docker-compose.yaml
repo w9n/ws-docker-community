@@ -1,22 +1,10 @@
 version: "3"
 
 services:
-  api:
-    image: wsbackend-api:latest
-    hostname: ws-api
-    build:
-      context: .
-      dockerfile: api.dockerfile
-    ports:
-      - "8000:8000"
-  tasknode:
-    image: wsbackend-tasknode:latest
-    build:
-      context: .
-      dockerfile: tasknode.dockerfile
   redis:
     image: redis:latest
     hostname: ws-redis
+
   rabbitmq:
     image: rabbitmq:3-management
     hostname: ws-rabbitmq
@@ -24,11 +12,53 @@ services:
       - RABBITMQ_DEFAULT_USER=wsuser
       - RABBITMQ_DEFAULT_PASS=wspassword
       - RABBITMQ_DEFAULT_VHOST=wsvhost
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:5.5.2
+    hostname: ws-elasticsearch
+    environment:
+      - http.host=0.0.0.0
+      - transport.host=127.0.0.1
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+
+  postgres:
+    image: postgres:alpine
+    hostname: ws-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ws_postgres_data:/var/lib/postgresql/data
+
+  api:
+    image: wsbackend-api:latest
+    hostname: ws-api
+    build:
+      context: .
+      dockerfile: dockerfiles/api.dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./configs/settings.py:/ws-backend/wsbackend/settings.py
+      - ./configs/tasknode.cfg:/ws-backend/tasknode/tasknode.cfg
+
+  tasknode:
+    image: wsbackend-tasknode:latest
+    build:
+      context: .
+      dockerfile: dockerfiles/tasknode.dockerfile
+    volumes:
+      - ./configs/tasknode.cfg:/ws-backend/tasknode/tasknode.cfg
+      - ./configs/settings.py:/ws-backend/wsbackend/settings.py
+
   frontend:
     image: wsfrontend:latest
     hostname: ws-frontend
     build:
       context: .
-      dockerfile: frontend.dockerfile
+      dockerfile: dockerfiles/frontend.dockerfile
     ports:
       - "8001:80"
+
+volumes:
+  ws_postgres_data:
